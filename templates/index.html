@@ -1,1 +1,32 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Brain Tumor Detection</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
+</head>
+<body>
+
+<div class="container">
+    <h1>Brain Tumor Detection</h1>
+
+    <form method="POST" enctype="multipart/form-data">
+        <input type="file" name="file" required>
+        <br><br>
+        <button type="submit">Predict</button>
+    </form>
+
+    {% if image_file %}
+        <h3>Uploaded MRI Image</h3>
+        <img src="{{ url_for('uploaded_file', filename=image_file) }}"
+             class="mri-image">
+    {% endif %}
+
+    {% if prediction %}
+        <h2>Prediction Result</h2>
+        <p class="result">{{ prediction }}</p>
+    {% endif %}
+</div>
+
+</body>
+</html>
 
