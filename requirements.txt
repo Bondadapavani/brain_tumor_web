@@ -4,4 +4,5 @@ numpy
 opencv-python
 h5py
 pillow
+gunicorn
 
