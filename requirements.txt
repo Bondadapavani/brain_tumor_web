@@ -3,4 +3,4 @@ gunicorn
 tensorflow==2.13.0
 numpy
 pillow
-opencv-python
+opencv-python-headless
