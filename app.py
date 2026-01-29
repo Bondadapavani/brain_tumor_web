@@ -1,61 +1,79 @@
-from flask import Flask, render_template, request, send_from_directory
-import tensorflow as tf
+import os
 import numpy as np
 import cv2
-import os
+from flask import Flask, render_template, request
+from tensorflow.keras.models import load_model
+from tensorflow.keras.preprocessing import image
 
 app = Flask(__name__)
-app.config['UPLOAD_FOLDER'] = 'uploads'
 
-# Load model
-MODEL_PATH = os.path.join(
-    os.path.dirname(__file__),
-    "brain_tumor_vgg16_final.h5"
-)
-model = tf.keras.models.load_model(MODEL_PATH)
+model = load_model("brain_tumor_vgg16_final.h5")
+classes = ["Glioma", "Meningioma", "Pituitary", "No Tumor"]
 
-# Class labels
-class_labels = ['glioma', 'meningioma', 'no_tumor', 'pituitary']
+UPLOAD_FOLDER = "uploads"
+os.makedirs(UPLOAD_FOLDER, exist_ok=True)
 
-@app.route('/', methods=['GET', 'POST'])
+# -------- MRI VALIDATION FUNCTION --------
+def is_mri_image(img_path):
+    img = cv2.imread(img_path)
+    if img is None:
+        return False
+
+    # Convert to grayscale
+    gray = cv2.cvtColor(img, cv2.COLOR_BGR2GRAY)
+
+    # Check color variance (MRI images are low-color)
+    b, g, r = cv2.split(img)
+    color_variance = np.var(b) + np.var(g) + np.var(r)
+
+    # Edge detection (MRI has strong structures)
+    edges = cv2.Canny(gray, 50, 150)
+    edge_density = np.sum(edges > 0) / edges.size
+
+    # Decision thresholds (tested values)
+    if color_variance < 5000 and edge_density > 0.02:
+        return True
+    else:
+        return False
+
+# -------- FLASK ROUTE --------
+@app.route("/", methods=["GET", "POST"])
 def index():
-    prediction = ""
-    image_file = None
+    result = None
+    confidence = None
 
-    if request.method == 'POST':
-        file = request.files['file']
+    if request.method == "POST":
+        file = request.files["file"]
 
-        if file and file.filename != "":
-            filepath = os.path.join(app.config['UPLOAD_FOLDER'], file.filename)
-            file.save(filepath)
+        if file:
+            file_path = os.path.join(UPLOAD_FOLDER, file.filename)
+            file.save(file_path)
 
-            # Preprocess image
-            img = cv2.imread(filepath)
-            img = cv2.resize(img, (224, 224))
-            img = img / 255.0
-            img = img.reshape(1, 224, 224, 3)
+            # STEP 1: MRI CHECK
+            if not is_mri_image(file_path):
+                result = "Invalid Image (Please upload MRI scan)"
+                confidence = None
+                return render_template("index.html", result=result, confidence=confidence)
 
-            # Predict
-            preds = model.predict(img)
-            prediction = class_labels[np.argmax(preds)]
+            # STEP 2: CNN PREDICTION
+            img = image.load_img(file_path, target_size=(224, 224))
+            img_array = image.img_to_array(img)
+            img_array = np.expand_dims(img_array, axis=0)
+            img_array = img_array / 255.0
 
-            image_file = file.filename
+            pred = model.predict(img_array)
+            max_prob = np.max(pred)
+            class_index = np.argmax(pred)
 
-    return render_template(
-        'index.html',
-        prediction=prediction,
-        image_file=image_file
-    )
+            confidence = round(float(max_prob) * 100, 2)
 
-# 🔥 NEW ROUTE TO SERVE UPLOADED IMAGES
-@app.route('/uploads/<filename>')
-def uploaded_file(filename):
-    return send_from_directory(app.config['UPLOAD_FOLDER'], filename)
+            # FINAL SAFETY CHECK
+            if max_prob < 0.85:
+                result = "Uncertain MRI Image"
+            else:
+                result = classes[class_index]
 
+    return render_template("index.html", result=result, confidence=confidence)
 
 if __name__ == "__main__":
-    app.run(host="0.0.0.0", port=5000)
-
-
-
-
+    app.run()
