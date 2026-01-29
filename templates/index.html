@@ -1,32 +1,46 @@
 <!DOCTYPE html>
-<html>
+<html lang="en">
 <head>
+    <meta charset="UTF-8">
     <title>Brain Tumor Detection</title>
     <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
 </head>
 <body>
 
 <div class="container">
-    <h1>Brain Tumor Detection</h1>
+    <div class="card">
+        <h1>🧠 Brain Tumor Detection</h1>
+        <p class="subtitle">Upload MRI image</p>
 
-    <form method="POST" enctype="multipart/form-data">
-        <input type="file" name="file" required>
-        <br><br>
-        <button type="submit">Predict</button>
-    </form>
+        <form method="POST" enctype="multipart/form-data">
+            <label class="upload-box">
+                <input type="file" name="file" id="fileInput" required>
+                <span>Click or Upload MRI</span>
+            </label>
 
-    {% if image_file %}
-        <h3>Uploaded MRI Image</h3>
-        <img src="{{ url_for('uploaded_file', filename=image_file) }}"
-             class="mri-image">
-    {% endif %}
+            <div class="preview">
+                <img id="previewImage" style="display:none;">
+            </div>
 
-    {% if prediction %}
-        <h2>Prediction Result</h2>
-        <p class="result">{{ prediction }}</p>
-    {% endif %}
+            <button type="submit">Predict</button>
+        </form>
+
+        {% if result %}
+        <div class="result">
+            <p class="prediction">{{ result }}</p>
+            <p class="confidence">Confidence: {{ confidence }}%</p>
+        </div>
+        {% endif %}
+    </div>
 </div>
+
+<script>
+document.getElementById("fileInput").addEventListener("change", function(e){
+    let img = document.getElementById("previewImage");
+    img.src = URL.createObjectURL(e.target.files[0]);
+    img.style.display = "block";
+});
+</script>
 
 </body>
 </html>
-
