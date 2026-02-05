@@ -1,45 +1,84 @@
 <!DOCTYPE html>
-<html lang="en">
+<html>
 <head>
-    <meta charset="UTF-8">
     <title>Brain Tumor Detection</title>
-    <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
+    <style>
+        body {
+            font-family: Arial;
+            background: #f4f6f8;
+            text-align: center;
+        }
+        .box {
+            background: white;
+            width: 400px;
+            margin: 50px auto;
+            padding: 25px;
+            border-radius: 10px;
+            box-shadow: 0 0 10px #ccc;
+        }
+        img {
+            max-width: 100%;
+            margin-top: 15px;
+            display: none;
+            border-radius: 8px;
+        }
+        button {
+            margin-top: 15px;
+            padding: 10px 20px;
+            background: #007bff;
+            color: white;
+            border: none;
+            border-radius: 5px;
+            cursor: pointer;
+        }
+    </style>
 </head>
+
 <body>
 
-<div class="container">
-    <div class="card">
-        <h1>🧠 Brain Tumor Detection</h1>
-        <p class="subtitle">Upload MRI image</p>
+<div class="box">
+    <h2>Brain Tumor Classification</h2>
 
-        <form method="POST" enctype="multipart/form-data">
-            <label class="upload-box">
-                <input type="file" name="file" id="fileInput" required>
-                <span>Click or Upload MRI</span>
-            </label>
+    <input type="file" id="imgInput" accept="image/*"><br>
 
-            <div class="preview">
-                <img id="previewImage" style="display:none;">
-            </div>
+    <img id="preview">
 
-            <button type="submit">Predict</button>
-        </form>
+    <button onclick="predict()">Detect Tumor</button>
 
-        {% if result %}
-        <div class="result">
-            <p class="prediction">{{ result }}</p>
-            <p class="confidence">Confidence: {{ confidence }}%</p>
-        </div>
-        {% endif %}
-    </div>
+    <h3 id="result"></h3>
 </div>
 
 <script>
-document.getElementById("fileInput").addEventListener("change", function(e){
-    let img = document.getElementById("previewImage");
-    img.src = URL.createObjectURL(e.target.files[0]);
-    img.style.display = "block";
-});
+function predict(){
+    const fileInput = document.getElementById("imgInput");
+    const preview = document.getElementById("preview");
+    const result = document.getElementById("result");
+
+    if (!fileInput.files[0]) {
+        alert("Please upload MRI image");
+        return;
+    }
+
+    // Show MRI image
+    preview.src = URL.createObjectURL(fileInput.files[0]);
+    preview.style.display = "block";
+
+    let form = new FormData();
+    form.append("image", fileInput.files[0]);
+
+    result.innerHTML = "Detecting...";
+
+    fetch("/predict", {
+        method: "POST",
+        body: form
+    })
+    .then(res => res.json())
+    .then(data => {
+        result.innerHTML =
+            "Tumor: <b>" + data.class +
+            "</b><br>Confidence: " + data.confidence + "%";
+    });
+}
 </script>
 
 </body>
